@@ -1,16 +1,38 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.neenbedankt.android-apt'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.5.1'
+    }
+}
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "21.1.2"
+
+    compileSdkVersion 22
+    buildToolsVersion "22.0.1"
+
+    repositories {
+
+        mavenCentral()
+
+        flatDir {
+            dirs 'libs'
+        }
+    }
 
     defaultConfig {
         applicationId "ru.noties.tasker.sample"
         minSdkVersion 14
-        targetSdkVersion 21
-        versionCode 1
-        versionName "1.0"
+        targetSdkVersion 22
+        versionCode 2
+        versionName "1.1.0"
     }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -20,8 +42,11 @@ android {
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'ru.noties:debug:1.1.1@aar'
+    compile 'ru.noties:debug:2.0.0'
     compile project(':library')
-    compile 'de.greenrobot:eventbus:2.4.0'
+
+    // handle
+    compile files('libs/handle-annotations-1.0.0.jar')
+    compile 'ru.noties.handle:handle-core:1.0.0@aar'
+    apt files('libs/handle-processor-1.0.0.jar')
 }

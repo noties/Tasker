@@ -2,70 +2,88 @@ package ru.noties.tasker.sample;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.os.SystemClock;
-import android.widget.Toast;
 
 import ru.noties.debug.Debug;
-import ru.noties.tasker.event.Event;
-import ru.noties.tasker.event.EventManager;
-import ru.noties.tasker.task.Task;
-import ru.noties.tasker.task.TaskManager;
+import ru.noties.handle.Handle;
+import ru.noties.handle.IEventHandler;
+import ru.noties.handle.annotations.EventHandler;
+import ru.noties.tasker.DuplicateExecutionStrategy;
+import ru.noties.tasker.Tasker;
 
+@EventHandler(MainActivity.MyEvent.class)
 public class MainActivity extends Activity {
+
+    final IEventHandler mEventHandler = new MainActivityEventHandler() {
+        @Override
+        public void onEvent(MyEvent event) {
+            Debug.i("received event with value: %s", event.value);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+    }
 
-        Debug.init(true);
+    private static void execute(int count) {
+        for (int i = count; --i > -1; ) {
+            final boolean result = Tasker.execute(new MyTask());
+            Debug.i("result: %s", result);
+        }
+    }
 
-        EventManager.subscribe(this);
+    private static void executeDuplicateReplace(int count) {
+        for (int i = count; --i > -1; ) {
+            final boolean result = Tasker.execute(new MyTask(), "replace", DuplicateExecutionStrategy.REPLACE);
+            Debug.i("result: %s", result);
+        }
+    }
 
-        TaskManager.execute(new TestTask(), "test_task");
-        TaskManager.execute(new TestTask2(), "test_task2");
+    private static void executeDuplicateDoNotExecute(int count) {
+        for (int i = count; --i > -1; ) {
+            final boolean result = Tasker.execute(new MyTask(), "do_nothing", DuplicateExecutionStrategy.DO_NOT_EXECUTE);
+            Debug.i("result: %s", result);
+        }
+    }
+
+    static class MyEvent {
+        final String value;
+        MyEvent(String value) {
+            this.value = value;
+        }
     }
 
     @Override
-    public void onDestroy() {
-        EventManager.unsubscribe(this);
-        super.onDestroy();
+    public void onStart() {
+        super.onStart();
+
+        Handle.register(mEventHandler);
+
+        final int count = 5;
+
+        execute(count);
+        executeDuplicateReplace(count);
+        executeDuplicateDoNotExecute(count);
     }
 
-    @SuppressWarnings("unused")
-    public void onEventMainThread(TestEvent2 event2) {
-        Toast.makeText(this, String.valueOf(event2.getValue()), Toast.LENGTH_LONG).show();
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        Handle.unregister(mEventHandler);
     }
 
-    private static class TestTask extends Task {
+    private static class MyTask extends BaseTask {
 
         @Override
         protected void execute() {
-
-            try {
-                Thread.sleep(2500L);
-            } catch (InterruptedException e) {
-                onCatchedThrowable(e);
-            }
-
-            throw new AssertionError("Error");
-        }
-    }
-
-    private static class TestTask2 extends Task {
-
-        @Override
-        protected void execute() {
-
             try {
                 Thread.sleep(1500L);
             } catch (InterruptedException e) {
-                onCatchedThrowable(e);
+                Debug.e(e);
             }
-
-            post(new TestEvent2().setValue(SystemClock.elapsedRealtime()));
+            post(new MyEvent(toString()));
         }
     }
-
-    private static class TestEvent2 extends Event<Long> {}
 }
